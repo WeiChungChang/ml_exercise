@@ -34,6 +34,9 @@ import tensorflow as tf
 import cv2
 import os
 
+import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
+
 def layer(op):
     """Decorator for composable network layers."""
 
@@ -295,6 +298,11 @@ def create_mtcnn(sess, model_path):
     onet_fun = lambda img : sess.run(('onet/conv6-2/conv6-2:0', 'onet/conv6-3/conv6-3:0', 'onet/prob1:0'), feed_dict={'onet/input:0':img})
     return pnet_fun, rnet_fun, onet_fun
 
+def face_plot(face_img):
+    # create the x and y coordinate arrays (here we just use pixel indices)
+    xx, yy = np.mgrid[0:face_img.shape[0], 0:face_img.shape[1]]
+
+
 def detect_face(img, minsize, pnet, rnet, onet, threshold, factor):
     """Detects faces in an image, and returns bounding boxes and points for them.
     img: input image
@@ -318,6 +326,7 @@ def detect_face(img, minsize, pnet, rnet, onet, threshold, factor):
         minl = minl*factor
         factor_count += 1
 
+    _count = 0
     # first stage
     for scale in scales:
         hs=int(np.ceil(h*scale))
@@ -329,7 +338,25 @@ def detect_face(img, minsize, pnet, rnet, onet, threshold, factor):
         out = pnet(img_y)
         out0 = np.transpose(out[0], (0,2,1,3))
         out1 = np.transpose(out[1], (0,2,1,3))
-        
+        print('type(out1) ', type(out1), 'out1.shape ', out1.shape)
+        _fig=plt.figure()
+        _x = np.arange(0,out1.shape[1],1)
+        _y = np.arange(0,out1.shape[2],1)
+        print('type(_x) ', type(_x), '_x.shape ', _x.shape)
+        print('type(_y) ', type(_y), '_y.shape ', _y.shape)
+        _y,_x = np.meshgrid(_x,_y)
+        print('type(_x) ', type(_x), '_x.shape ', _x.shape)
+        print('type(_y) ', type(_y), '_y.shape ', _y.shape)
+
+        _ax = Axes3D(_fig)
+        _z = out1[0, :, :, 1]
+        _z = np.transpose(_z)
+        print('type(_z) ', type(_z), '_z.shape ', _z.shape)
+        _ax.plot_surface(_x, _y, _z, rstride=1, cstride=1, cmap=plt.cm.coolwarm,alpha=0.5)
+        #plt.show()
+        plt.savefig('%d.jpg' % _count)
+        _count = _count + 1
+
         boxes, _ = generateBoundingBox(out1[0,:,:,1].copy(), out0[0,:,:,:].copy(), scale, threshold[0])
         
         # inter-scale nms
